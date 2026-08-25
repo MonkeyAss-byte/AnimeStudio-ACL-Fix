@@ -1,9 +1,9 @@
 $ErrorActionPreference = 'Stop'
 
 # prepare patcher
-dotnet build AnimeStudio.Patcher -c Release -f net10.0
+dotnet build AnimeStudio.Patcher -c Release -f net9.0
 if ($LASTEXITCODE -ne 0) { throw "Patcher build failed" }
-$patcher = "AnimeStudio.Patcher\bin\Release\net10.0\AnimeStudio.Patcher.exe"
+$patcher = "AnimeStudio.Patcher\bin\Release\net9.0\AnimeStudio.Patcher.exe"
 if (-not (Test-Path $patcher)) { throw "Patcher not found at $patcher" }
 
 function Reset-Dir([string]$path) {
@@ -37,7 +37,7 @@ function Remove-EmptyDirectories([string]$path) {
     }
 }
 
-foreach ($tfm in 'net9.0-windows', 'net10.0-windows') {
+foreach ($tfm in 'net9.0-windows') {
     # config
     $outputDir = ".\dist\$tfm"
     $configuration = 'Release'
