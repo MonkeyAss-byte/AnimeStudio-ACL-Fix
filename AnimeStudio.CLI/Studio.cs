@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
@@ -359,8 +359,8 @@ namespace AnimeStudio.CLI
                     break;
                 case Mesh _ when ClassIDType.Mesh.CanExport():
                 case TextAsset _ when ClassIDType.TextAsset.CanExport():
-                case AnimationClip _ when ClassIDType.Font.CanExport():
-                case Font _ when ClassIDType.GameObject.CanExport():
+                case AnimationClip _ when ClassIDType.AnimationClip.CanExport():
+                case Font _ when ClassIDType.Font.CanExport():
                 case MovieTexture _ when ClassIDType.MovieTexture.CanExport():
                 case Sprite _ when ClassIDType.Sprite.CanExport():
                 case Material _ when ClassIDType.Material.CanExport():

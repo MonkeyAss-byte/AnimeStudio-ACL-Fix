@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System.Buffers.Binary;
 using System;
@@ -471,9 +471,14 @@ namespace AnimeStudio.CLI
             var convert = animationList != null
                 ? new ModelConverter(m_Animator, options, animationList.Select(x => (AnimationClip)x.Asset).ToArray())
                 : new ModelConverter(m_Animator, options);
+            if (convert.MeshList.Count == 0)
+            {
+                Logger.Info($"Animator {item.Text} has no mesh, skipping...");
+                return false;
+            }
             if (options.exportMaterials)
             {
-                var materialExportPath = Path.Combine(Path.GetDirectoryName(exportFullPath), "Materials");
+                var materialExportPath = Path.Combine(exportFullPath, "Materials");
                 Directory.CreateDirectory(materialExportPath);
                 foreach (var material in options.materials)
                 {
@@ -481,7 +486,8 @@ namespace AnimeStudio.CLI
                     ExportJSONFile(matItem, materialExportPath);
                 }
             }
-            ExportFbx(convert, exportFullPath);
+            var fbxPath = Path.Combine(exportFullPath, FixFileName(item.Text) + ".fbx");
+            ExportFbx(convert, fbxPath);
             return true;
         }
 

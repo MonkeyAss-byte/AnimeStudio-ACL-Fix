@@ -89,15 +89,27 @@ namespace ACLLibs
         }
         public static void DecompressTracks(byte[] data, byte[] db, out float[] values, out float[] times, bool isZZZ = false)
         {
+            if (data == null || data.Length == 0)
+            {
+                values = Array.Empty<float>();
+                times = Array.Empty<float>();
+                return;
+            }
+
+            db ??= Array.Empty<byte>();
+
             var decompressedClip = new DecompressedClip();
 
-            var dataPtr = Marshal.AllocHGlobal(data.Length + 8);
+            var dataPtr = Marshal.AllocHGlobal(data.Length + 16);
             var dataAligned = new IntPtr(16 * (((long)dataPtr + 15) / 16));
             Marshal.Copy(data, 0, dataAligned, data.Length);
 
-            var dbPtr = Marshal.AllocHGlobal(db.Length + 8);
+            var dbPtr = Marshal.AllocHGlobal(db.Length + 16);
             var dbAligned = new IntPtr(16 * (((long)dbPtr + 15) / 16));
-            Marshal.Copy(db, 0, dbAligned, db.Length);
+            if (db.Length > 0)
+            {
+                Marshal.Copy(db, 0, dbAligned, db.Length);
+            }
 
             // as long as m_ClipData is passed to the DB dll without the rest it should be fine
             // m_databaseData doesn't seem to be used. For now

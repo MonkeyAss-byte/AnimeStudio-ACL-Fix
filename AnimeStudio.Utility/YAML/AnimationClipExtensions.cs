@@ -1,9 +1,10 @@
-﻿using System.IO;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Collections.Generic;
 using SevenZip;
 using System;
+using System.Text.RegularExpressions;
 
 namespace AnimeStudio
 {
@@ -12,6 +13,37 @@ namespace AnimeStudio
         public static float DefaultFloatWeight => 1.0f / 3.0f;
         public static Vector3 DefaultVector3Weight => new Vector3(1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f);
         public static Quaternion DefaultQuaternionWeight => new Quaternion(1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f);
+        public static readonly Dictionary<uint, string> GlobalTOS = new Dictionary<uint, string>();
+
+        static AnimationClipExtensions()
+        {
+            try
+            {
+                var assembly = typeof(AnimationClipExtensions).Assembly;
+                var resName = assembly.GetManifestResourceNames().FirstOrDefault(x => x.EndsWith("global_tos_dict.json"));
+                if (resName != null)
+                {
+                    using var stream = assembly.GetManifestResourceStream(resName);
+                    if (stream != null)
+                    {
+                        using var reader = new StreamReader(stream, Encoding.UTF8);
+                        var json = reader.ReadToEnd();
+                        var dict = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+                        if (dict != null)
+                        {
+                            foreach (var kvp in dict)
+                            {
+                                if (uint.TryParse(kvp.Key, out uint hash))
+                                {
+                                    GlobalTOS[hash] = kvp.Value;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
 
         #region AnimationClip
         public static IEnumerable<GameObject> FindRoots(this AnimationClip clip)
@@ -49,57 +81,69 @@ namespace AnimeStudio
         public static Dictionary<uint, string> FindTOS(this AnimationClip clip)
         {
             var tos = new Dictionary<uint, string>() { { 0, string.Empty } };
-            foreach (var asset in clip.assetsFile.assetsManager.assetsFileList.SelectMany(x => x.Objects).OrderBy(x => x.type).ToArray())
+
+            // 1. Check GlobalTOS (populated with all known avatars/models)
+            clip.AddTOS(GlobalTOS, tos);
+            clip.AddTOS(Avatar.GlobalTOS, tos);
+
+            // 2. Check loaded assets in current files
+            var allObjects = clip.assetsFile?.assetsManager?.assetsFileList?.SelectMany(x => x.Objects)?.ToArray();
+            if (allObjects != null)
             {
-                switch (asset.type)
+                foreach (var avatar in allObjects.OfType<Avatar>())
                 {
-                    case ClassIDType.Avatar:
-                        var avatar = asset as Avatar;
-                        if (clip.AddAvatarTOS(avatar, tos))
-                        {
-                            return tos;
-                        }
-                        break;
-                    case ClassIDType.Animator:
-                        var animator = asset as Animator;
-                        if (clip.IsAnimatorContainsClip(animator))
-                        {
-                            if (clip.AddAnimatorTOS(animator, tos))
-                            {
-                                return tos;
-                            }
-                        }
-                        break;
-                    case ClassIDType.Animation:
-                        var animation = asset as Animation;
-                        if (clip.IsAnimationContainsClip(animation))
-                        {
-                            if (clip.AddAnimationTOS(animation, tos))
-                            {
-                                return tos;
-                            }
-                        }
-                        break;
+                    clip.AddAvatarTOS(avatar, tos);
+                }
+                foreach (var animator in allObjects.OfType<Animator>())
+                {
+                    clip.AddAnimatorTOS(animator, tos);
+                }
+                foreach (var controller in allObjects.OfType<AnimatorController>())
+                {
+                    if (controller.m_TOS != null)
+                    {
+                        clip.AddTOS(controller.m_TOS, tos);
+                    }
+                }
+                foreach (var go in allObjects.OfType<GameObject>())
+                {
+                    if (go.m_Transform != null && !go.m_Transform.m_Father.TryGet(out _))
+                    {
+                        var goTos = go.BuildTOS();
+                        clip.AddTOS(goTos, tos);
+                    }
+                }
+                foreach (var animation in allObjects.OfType<Animation>())
+                {
+                    clip.AddAnimationTOS(animation, tos);
                 }
             }
+
             return tos;
         }
         private static bool AddAvatarTOS(this AnimationClip clip, Avatar avatar, Dictionary<uint, string> tos)
         {
-            return clip.AddTOS(avatar.m_TOS.ToDictionary(x => x.Key, x => x.Value), tos);
+            if (avatar?.m_TOS == null) return false;
+            return clip.AddTOS(avatar.m_TOS, tos);
         }
         private static bool AddAnimatorTOS(this AnimationClip clip, Animator animator, Dictionary<uint, string> tos)
         {
+            bool added = false;
             if (animator.m_Avatar.TryGet(out var avatar))
             {
                 if (clip.AddAvatarTOS(avatar, tos))
                 {
-                    return true;
+                    added = true;
                 }
             }
 
             Dictionary<uint, string> animatorTOS = animator.BuildTOS();
-            return clip.AddTOS(animatorTOS, tos);
+            if (animatorTOS != null && clip.AddTOS(animatorTOS, tos))
+            {
+                added = true;
+            }
+
+            return added;
         }
         private static bool AddAnimationTOS(this AnimationClip clip, Animation animation, Dictionary<uint, string> tos)
         {
@@ -112,6 +156,7 @@ namespace AnimeStudio
         }
         private static bool AddTOS(this AnimationClip clip, Dictionary<uint, string> src, Dictionary<uint, string> dest)
         {
+            if (src == null || clip.m_ClipBindingConstant?.genericBindings == null) return false;
             int tosCount = clip.m_ClipBindingConstant.genericBindings.Count;
             for (int i = 0; i < tosCount; i++)
             {
@@ -119,13 +164,9 @@ namespace AnimeStudio
                 if (src.TryGetValue(binding.path, out string path))
                 {
                     dest[binding.path] = path;
-                    if (dest.Count == tosCount)
-                    {
-                        return true;
-                    }
                 }
             }
-            return false;
+            return dest.Count >= tosCount;
         }
         private static bool IsAnimationContainsClip(this AnimationClip clip, Animation animation)
         {
@@ -165,7 +206,24 @@ namespace AnimeStudio
                 YAMLDocument doc = ExportYAMLDocument(animationClip);
                 writer.AddDocument(doc);
                 writer.Write(stringWriter);
-                return sb.ToString();
+                
+                string result = sb.ToString();
+                
+                result = Regex.Replace(result, @"(path:\s*)(\d+)", m => 
+                {
+                    if (uint.TryParse(m.Groups[2].Value, out uint hash) && GlobalTOS.TryGetValue(hash, out string p))
+                        return m.Groups[1].Value + p;
+                    return m.Value;
+                });
+
+                result = Regex.Replace(result, @"path_(\d+)", m => 
+                {
+                    if (uint.TryParse(m.Groups[1].Value, out uint hash) && GlobalTOS.TryGetValue(hash, out string p))
+                        return p;
+                    return m.Value;
+                });
+
+                return result;
             }
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -1021,6 +1021,32 @@ namespace AnimeStudio
 
             reader.Position = pos;
         }
+    }
+
+    public class EFACLClip : ACLClip
+    {
+        public AnimClipAclCompressedBuffer m_Buffer;
+        public AnimationClipBindingConstant m_ClipBindingConstant;
+        public uint m_CurveCount;
+
+        public override bool IsSet => m_Buffer != null && (!m_Buffer.TransformBufferData.IsNullOrEmpty() || !m_Buffer.FloatBufferData.IsNullOrEmpty());
+        public override uint CurveCount => m_CurveCount;
+
+        public EFACLClip()
+        {
+            m_Buffer = null;
+            m_ClipBindingConstant = null;
+            m_CurveCount = 0;
+        }
+
+        public EFACLClip(AnimClipAclCompressedBuffer buffer, AnimationClipBindingConstant clipBindingConstant, uint curveCount)
+        {
+            m_Buffer = buffer;
+            m_ClipBindingConstant = clipBindingConstant;
+            m_CurveCount = curveCount;
+        }
+
+        public override void Read(ObjectReader reader) { }
     }
 
     public class StreamedClip
@@ -2169,6 +2195,23 @@ namespace AnimeStudio
             if (reader.Game.Type.IsArknightsEndfieldCB3() || reader.Game.Type.IsArknightsEndfield())
             {
                 m_AclCompressedBuffer = new AnimClipAclCompressedBuffer(reader);
+                if (m_AclCompressedBuffer != null && (!m_AclCompressedBuffer.TransformBufferData.IsNullOrEmpty() || !m_AclCompressedBuffer.FloatBufferData.IsNullOrEmpty()))
+                {
+                    uint curveCount = (uint)(m_AclCompressedBuffer.OutputTrackCount * 10 + m_AclCompressedBuffer.FloatCurveCount);
+                    if (curveCount == 0 && m_ClipBindingConstant?.genericBindings != null)
+                    {
+                        curveCount = (uint)m_ClipBindingConstant.genericBindings.Sum(b => b.typeID == ClassIDType.Transform ? (b.attribute == 2 ? 4 : 3) : 1);
+                    }
+                    if (m_MuscleClip == null)
+                    {
+                        m_MuscleClip = new ClipMuscleConstant { m_Clip = new Clip() };
+                    }
+                    else if (m_MuscleClip.m_Clip == null)
+                    {
+                        m_MuscleClip.m_Clip = new Clip();
+                    }
+                    m_MuscleClip.m_Clip.m_ACLClip = new EFACLClip(m_AclCompressedBuffer, m_ClipBindingConstant, curveCount);
+                }
             }
             if (version[0] > 2018 || (version[0] == 2018 && version[1] >= 3)) //2018.3 and up
             {

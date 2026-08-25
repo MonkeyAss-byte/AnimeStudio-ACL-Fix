@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -96,20 +96,18 @@ namespace AnimeStudio.CLI
 
                     classTypeFilter = classTypeFilterList.ToArray();
 
-                    if (ClassIDType.GameObject.CanExport() || ClassIDType.Animator.CanExport())
+                    if (ClassIDType.GameObject.CanExport() || ClassIDType.Animator.CanExport() || ClassIDType.AnimationClip.CanExport())
                     {
+                        TypeFlags.SetType(ClassIDType.Avatar, true, false);
+                        TypeFlags.SetType(ClassIDType.GameObject, true, ClassIDType.GameObject.CanExport());
+                        TypeFlags.SetType(ClassIDType.Animator, true, ClassIDType.Animator.CanExport());
+                        TypeFlags.SetType(ClassIDType.Transform, true, false);
+                        TypeFlags.SetType(ClassIDType.AnimatorController, true, false);
+                        TypeFlags.SetType(ClassIDType.Animation, true, false);
                         TypeFlags.SetType(ClassIDType.Texture2D, true, exportTexture2D);
                         if (Settings.Default.exportMaterials)
                         {
                             TypeFlags.SetType(ClassIDType.Material, true, exportMaterial);
-                        }
-                        if (ClassIDType.GameObject.CanExport())
-                        {
-                            TypeFlags.SetType(ClassIDType.Animator, true, false);
-                        }
-                        else if(ClassIDType.Animator.CanExport())
-                        {
-                            TypeFlags.SetType(ClassIDType.GameObject, true, false);
                         }
                     }
                 }

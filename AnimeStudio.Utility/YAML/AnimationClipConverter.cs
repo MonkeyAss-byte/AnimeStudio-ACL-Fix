@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -114,6 +114,11 @@ namespace AnimeStudio
                     if (!game.Type.IsSRGroup())
                         index += (int)animationClip.m_MuscleClip.m_Clip.m_ACLClip.CurveCount;
                     var binding = bindings.FindBinding(index);
+                    if (binding == null)
+                    {
+                        curveIndex = GetNextCurve(frame, curveIndex);
+                        continue;
+                    }
 
                     var path = GetCurvePath(tos, binding.path);
                     if (binding.typeID == ClassIDType.Transform)
@@ -163,6 +168,11 @@ namespace AnimeStudio
                     if (!game.Type.IsSRGroup())
                         index += (int)clip.m_ACLClip.CurveCount;
                     var binding = bindings.FindBinding(index);
+                    if (binding == null)
+                    {
+                        curveIndex++;
+                        continue;
+                    }
                     var path = GetCurvePath(tos, binding.path);
                     var framePosition = frameOffset + curveIndex;
                     if (binding.typeID == ClassIDType.Transform)
@@ -190,6 +200,11 @@ namespace AnimeStudio
             float[] slopeValues = new float[4]; // no slopes - 0 values
 
             int frameCount = times.Length;
+            if (frameCount == 0 || values.Length == 0 || acl.CurveCount == 0)
+            {
+                return 0.0f;
+            }
+
             for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
             {
                 float time = times[frameIndex];
@@ -200,6 +215,11 @@ namespace AnimeStudio
                     if (game.Type.IsSRGroup())
                         index += (int)(clip.m_DenseClip.m_CurveCount + clip.m_StreamedClip.curveCount);
                     GenericBinding binding = bindings.FindBinding(index);
+                    if (binding == null)
+                    {
+                        curveIndex++;
+                        continue;
+                    }
                     string path = GetCurvePath(tos, binding.path);
                     int framePosition = frameOffset + curveIndex;
                     if (binding.typeID == ClassIDType.Transform)

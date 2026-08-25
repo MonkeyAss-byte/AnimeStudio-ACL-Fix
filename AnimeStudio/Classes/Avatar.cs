@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace AnimeStudio
 {
@@ -398,6 +398,8 @@ namespace AnimeStudio
 
         public bool IsZZZ { get; }
 
+        public static readonly Dictionary<uint, string> GlobalTOS = new Dictionary<uint, string>();
+
         public Avatar(ObjectReader reader) : base(reader)
         {
 
@@ -414,7 +416,10 @@ namespace AnimeStudio
             m_TOS = new Dictionary<uint, string>();
             for (int i = 0; i < numTOS; i++)
             {
-                m_TOS.Add(reader.ReadUInt32(), reader.ReadAlignedString());
+                var hash = reader.ReadUInt32();
+                var bonePath = reader.ReadAlignedString();
+                m_TOS[hash] = bonePath;
+                GlobalTOS[hash] = bonePath;
             }
 
             // finally implemented the humandescription, not particularly useful but hey one step closer to being able to export to unity ready files
