@@ -309,6 +309,9 @@ namespace AnimeStudio
             {
                 case 1:
                     {
+                        if (!ShouldExportPosition(path))
+                            break;
+
                         var curve = new Vector3Curve(path);
                         if (!m_translations.TryGetValue(curve, out List<Keyframe<Vector3>> transCurve))
                         {
@@ -552,6 +555,18 @@ namespace AnimeStudio
             {
                 return UnknownPathPrefix + hash;
             }
+        }
+
+        public static bool ShouldExportPosition(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return true;
+            if (path == "Root" || path == "Root/Bip001" || path == "Root/Bip001/Bip001_Pelvis" || path == "Root/IK_Root")
+                return true;
+            if (path.EndsWith("Pelvis", StringComparison.OrdinalIgnoreCase) || path.EndsWith("Hips", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (!path.Contains("/") && !path.StartsWith("Bip001", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return false;
         }
         
     }

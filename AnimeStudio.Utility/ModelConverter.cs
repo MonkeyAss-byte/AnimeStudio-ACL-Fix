@@ -1025,12 +1025,16 @@ namespace AnimeStudio
                 switch (binding.attribute)
                 {
                     case 1:
-                        track.Translations.Add(new ImportedKeyframe<Vector3>(time, new Vector3
-                        (
-                            -data[curveIndex++ + offset],
-                            data[curveIndex++ + offset],
-                            data[curveIndex++ + offset]
-                        )));
+                        if (AnimationClipConverter.ShouldExportPosition(path))
+                        {
+                            track.Translations.Add(new ImportedKeyframe<Vector3>(time, new Vector3
+                            (
+                                -data[curveIndex + offset],
+                                data[curveIndex + 1 + offset],
+                                data[curveIndex + 2 + offset]
+                            )));
+                        }
+                        curveIndex += 3;
                         break;
                     case 2:
                         track.Rotations.Add(new ImportedKeyframe<Quaternion>(time, new Quaternion
